@@ -83,7 +83,11 @@ export function elemGenerator(tag, ns)
 			{
 				Object.keys( arg ).forEach( key =>
 				{
-					if ( typeof arg[key] === 'function' )
+					if ( arg[key] === null )
+					{
+						return;
+					}
+					else if ( typeof arg[key] === 'function' )
 					{
 						elem.addEventListener( key, arg[key] );
 					}

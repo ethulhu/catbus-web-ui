@@ -5,32 +5,181 @@
 	<meta name='viewport' content='width=device-width, initial-scale=1.0'>
 	<title>home</title>
 	<style>
-@media (prefers-color-scheme: dark) {
-        body {
-                background: #1f1f1f;
-                color: #ddd;
-        }
-	input, button {
-		display: block;
+	@media (prefers-color-scheme: dark) {
+		body {
+			background: #1f1f1f;
+			color: #ddd;
+		}
+		input, button {
+			display: block;
+		}
 	}
-}
 	</style>
 	<script src='https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.js' type='text/javascript'></script>
 </head>
-
 <body>
-	<h1>edelheim</h2>
-
+	<h1>edelheim</h1>
+	<main></main>
 	<script type='module'>
-		String.prototype.toTitleCase = function() {
-			return this.split( ' ' )
-				   .map( word => `${word.charAt( 0 ).toUpperCase()}${word.slice( 1 )}` )
-			           .join( ' ' );
+		import { elemRegister } from './elems.js';
+	  	elemRegister( '_', null, 'button', 'div', 'input', 'h2', 'h3', 'label', 'main', 'option', 'p', 'section', 'select', 'span' );
+
+                String.prototype.toTitleCase = function() {
+                        return this.split( ' ' )
+                                   .map( word => `${word.charAt( 0 ).toUpperCase()}${word.slice( 1 )}` )
+                                   .join( ' ' );
+                }
+                Array.prototype.last = function() {
+                        return this[ this.length - 1 ];
+                }
+                Array.prototype.unique = function() {
+			return this.filter( ( x, i ) => this.indexOf( x ) === i );
+                }
+		Map.prototype.sortedKeys = function() {
+			const keys = Array.from( this.keys() );
+			keys.sort();
+			return keys;
 		}
 
-		const BEST_EFFORT = 0;
+		const m = new Map();
+
+                function render( m ) {
+			const nameForID = id => id.split( '/' ).last()
+			                          .split( '_' )[0] 
+			                          .replace( '-', ' ' );
+
+			const rooms    = ( m, home  )  => m.sortedKeys().filter( k => k.startsWith( home   ) ).map( k => k.split( '/' )[ 1 ] ).unique();
+	 		const devices  = ( m, room )   => m.sortedKeys().filter( k => k.startsWith( room   ) ).map( k => k.split( '/' )[ 2 ] ).unique();
+			const controls = ( m, device ) => m.sortedKeys().filter( k => k.startsWith( device ) ).map( k => k.split( '/' )[ 3 ] ).unique();
+
+			const _power = id => _div(
+				_label(
+					{ for: id },
+					'power',
+				),
+				_input(
+					{ id: id },
+					{ type: 'checkbox' },
+					{ checked: m.get( id ) === 'on' ? true : null },
+					{ change: e => sendMessage( e.target.id, e.target.checked ? 'on' : 'off' ) },
+				),
+			);
+
+			const _range = ( id, min, max ) => _div(
+				_label(
+					{ for: id },
+					nameForID( id ),
+				),
+				_input(
+					{ id: id },
+					{ type: 'range' },
+					{ min: min },
+					{ max: max },
+					{ value: m.get( id ) },
+					{ change: e => sendMessage( e.target.id, e.target.value ) },
+				),
+			);
+			const _percent = id => _range( id, 0,    100  );
+			const _degrees = id => _range( id, 0,    359  );
+			const _kelvin  = id => _range( id, 2500, 9000 );
+			const _text = id => _div(
+				_label(
+					{ for: id },
+					nameForID( id ),
+				),
+				_input(
+					{ id: id },
+					{ type: 'text' },
+					{ value: m.get( id ) },
+				),
+			);
+			const _enum = id => _div(
+				_label(
+					{ for: id },
+					nameForID( id ),
+				),
+				_select(
+					{ id: id },
+					{ change: e => sendMessage( e.target.id, e.target.value ) },
+					m.get( `${id}/values` ).split( '\n' ).map(
+						value => _option(
+							value,
+							{ selected: value === m.get( id ) ? true : null },
+						)
+					),
+				),
+			);
+			const _control = id =>
+				id.includes( 'hygrothermograph' ) ? _sensor( id ) :
+				id.endsWith( 'degrees' ) ? _degrees( id ) :
+				id.endsWith( 'enum' )    ? _enum( id )    :
+				id.endsWith( 'kelvin' )  ? _kelvin( id )  :
+				id.endsWith( 'percent' ) ? _percent( id ) :
+				id.endsWith( 'power' )   ? _power( id )   :
+				                           _text( id )    ;
+
+			const _sensor = id => {
+				const unit =
+					id.endsWith( 'celsius' ) ? '°C' :
+					id.endsWith( 'percent' ) ? '%'  :
+					                           ''   ;
+				return _div(
+					`${nameForID( id )}: `,
+					_span( { id: id }, m.get( id ) ),
+					unit,
+				);
+			};
+
+
+			const _device = id => _section(
+				{ id: id },
+				_h3( nameForID( id ) ),
+				controls( m, id ).map( control => _control( `${id}/${control}` ) ),
+			);
+			const _room = id => _section(
+				{ id: id },
+				_h2( nameForID( id ) ),
+				devices( m, id ).map( device => _device( `${id}/${device}` ) ),
+			);
+			const main = _main(
+				rooms( m, 'home' ).map( room => _room( `home/${room}` ) ),
+			);
+
+			document.querySelector( 'main' ).replaceWith( main );
+                }
+
+		let newData = true;
+		function setValue( topic, data ) {
+			m.set( topic, data );
+
+			const [ home, zone, device, control, meta ] = topic.split( '/' );
+
+			// fix up enums needing values.
+			if ( control && control.endsWith( '_enum' ) ) {
+				if ( ! m.has( `${topic}/values` ) ) {
+					m.set( `${topic}/values`, '' );
+				}
+			}
+			if ( meta && control.endsWith( '_enum' ) && meta === 'values' ) {
+				if ( ! m.has( `${home}/${zone}/${device}/${control}` ) ) {
+					m.set( `${home}/${zone}/${device}/${control}`, '' );
+				}
+			}
+
+			newData = true;
+		}
+		window.setInterval( () => {
+			if ( newData ) {
+				newData = false;
+				render( m );
+			}
+		} , 1000 );
+
+		// MQTT.
+
+		const BEST_EFFORT   = 0;
 		const AT_LEAST_ONCE = 1;
-		const EXACTLY_ONCE = 2;
+		const EXACTLY_ONCE  = 2;
 
 		function onConnect() {
 			console.log( 'connected' );
@@ -50,99 +199,8 @@
 			const data = message.payloadString;
 			console.log( `${topic}: ${data}` );
 
-			let element = document.getElementById( topic );
-
-			if ( ! element ) {
-				const [ _home, roomID, deviceID, control ] = topic.split( '/' );
-				let room = document.getElementById( roomID );
-				if ( ! room ) {
-					room = document.createElement( 'section' );
-					room.id = roomID;
-					const h2 = document.createElement( 'h2' );
-					h2.textContent = roomID.replace( '-', ' ' ).toTitleCase();
-					room.appendChild( h2 );
-					document.body.appendChild( room );
-				}
-				let device = document.getElementById( deviceID );
-				if ( ! device ) {
-					device = document.createElement( 'section' );
-					device.id = deviceID;
-					const h3 = document.createElement( 'h3' );
-					h3.textContent = deviceID.replace( '-', ' ' ).toTitleCase();
-					device.appendChild( h3 );
-					room.append( device );
-				}
-				if ( control === 'power' ) {
-					const checkbox = document.createElement( 'input' );
-					checkbox.id = topic;
-					checkbox.type = 'checkbox';
-					checkbox.checked = data === 'on';
-					checkbox.addEventListener( 'change', e => {
-						const data = e.target.checked ? 'on' : 'off';
-						sendMessage( e.target.id, data );
-					} );
-					const label = document.createElement( 'label' );
-					label.for = topic;
-					label.textContent = 'Power';
-					device.append( label );
-					device.append( checkbox );
-					element = checkbox;
-				} else if ( control.endsWith( '_percent' ) ) {
-					const slider = document.createElement( 'input' );
-					slider.id = topic;
-					slider.type = 'range';
-					slider.min = 0;
-					slider.max = 100;
-					slider.value = data;
-					slider.addEventListener( 'change', e => {
-						sendMessage( e.target.id, slider.value );
-					} );
-					const label = document.createElement( 'label' );
-					label.for = topic;
-					label.textContent = control.split( '_' )[ 0 ];
-					device.appendChild( label );
-					device.appendChild( slider );
-					element = slider;
-				} else if ( control.endsWith( '_degrees' ) ) {
-					const slider = document.createElement( 'input' );
-					slider.id = topic;
-					slider.type = 'range';
-					slider.min = 0;
-					slider.max = 359;
-					slider.value = data;
-					slider.addEventListener( 'change', e => {
-						sendMessage( e.target.id, slider.value );
-					} );
-					const label = document.createElement( 'label' );
-					label.for = topic;
-					label.textContent = control.split( '_' )[ 0 ];
-					device.appendChild( label );
-					device.appendChild( slider );
-					element = slider;
-				} else if ( control === 'kelvin' ) {
-					const slider = document.createElement( 'input' );
-					slider.id = topic;
-					slider.type = 'range';
-					slider.min = 2500;
-					slider.max = 9000;
-					slider.value = data;
-					slider.addEventListener( 'change', e => {
-						sendMessage( e.target.id, slider.value );
-					} );
-					const label = document.createElement( 'label' );
-					label.for = topic;
-					label.textContent = control.split( '_' )[ 0 ];
-					device.appendChild( label );
-					device.appendChild( slider );
-					element = slider;
-				} else {
-					return;
-				}
-			}
-
-			element.dataset.state = data;
+			setValue( topic, data );
 		}
-
 		function sendMessage( path, data ) {
 			const message = new Paho.MQTT.Message( data );
 			message.destinationName = path;
