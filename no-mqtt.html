@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+	<meta charset='utf-8'>
+	<meta name='viewport' content='width=device-width, initial-scale=1.0'>
+	<title>home</title>
+	<style>
+	@media (prefers-color-scheme: dark) {
+		body {
+			background: #1f1f1f;
+			color: #ddd;
+		}
+		input, button {
+			display: block;
+		}
+	}
+	</style>
+</head>
+<body>
+	<h1>edelheim</h1>
+	<main></main>
+	<script type='module'>
+		import { elemRegister } from './elems.js';
+	  	elemRegister( '_', null, 'button', 'div', 'input', 'h2', 'h3', 'label', 'main', 'p', 'section' );
+
+                String.prototype.toTitleCase = function() {
+                        return this.split( ' ' )
+                                   .map( word => `${word.charAt( 0 ).toUpperCase()}${word.slice( 1 )}` )
+                                   .join( ' ' );
+                }
+                Array.prototype.last = function() {
+                        return this[ this.length - 1 ];
+                }
+		Map.prototype.sortedKeys = function() {
+			const keys = Array.from( this.keys() );
+			keys.sort();
+			return keys;
+		}
+                Map.prototype.setNested = function( keys, value ) {
+                        let m = this;
+                        for ( let key of keys.slice( 0, -1 ) ) {
+                                if ( ! m.has( key ) ) {
+                                        m.set( key, new Map() );
+                                }
+
+                                m = m.get( key );
+                                if ( ! m instanceof Map ) {
+                                        throw `${key} exists and is not a map`;
+                                }
+                        }
+
+                        m.set( keys.last(), value );
+                }
+                Map.prototype.getNested = function( keys ) {
+                        let m = this;
+                        for ( let key of keys.slice( 0, -1 ) ) {
+				m = m.get( key );
+                                if ( ! m instanceof Map ) {
+                                        throw `${key} exists and is not a map`;
+                                }
+                        }
+
+                        return m.get( keys.last() );
+                }
+                Map.prototype.hasNested = function( keys ) {
+                        let m = this;
+                        for ( let key of keys.slice( 0, -1 ) ) {
+				if ( ! m.has( key ) ) {
+					return false;
+				}
+
+				m = m.get( key );
+                                if ( ! m instanceof Map ) {
+                                        throw `${key} exists and is not a map`;
+                                }
+                        }
+
+                        return m.has( keys.last() );
+                }
+
+                function render( m ) {
+			const main = _main(
+				m.sortedKeys().map( room => _section(
+					{ id: `home/${room}` },
+					_h2( room.replace( '-', ' ' ).toTitleCase() ),
+					m.get( room ).sortedKeys().map( device => _section(
+						{ id: `home/${room}/${device}` },
+						_h3( device.replace( '-', ' ' ).toTitleCase() ),
+						m.getNested( [ room, device ] ).sortedKeys().map(
+							control => controlForType(
+								`home/${room}/${device}/${control}`,
+								control.split( '_' )[ 0 ].replace( '-', ' ' ),
+								m.getNested( [ room, device, control ] ),
+							),
+						),
+					) ),
+				) ),
+			);
+
+			document.querySelector( 'main' ).replaceWith( main );
+                }
+
+		const controlForType = ( id, name, value ) =>
+			id.endsWith( 'power' )    ? power( id, value )         :
+			id.endsWith( '_percent' ) ? percent( id, name, value ) :
+			id.endsWith( '_degrees' ) ? degrees( id, name, value ) :
+			id.endsWith( '_kelvin' )  ? degrees( id, name, value ) :
+			id.endsWith( '_kelvin' )  ? degrees( id, name, value ) :
+			                            text( id, name, value )    ;
+		const power = ( id, value ) => _div(
+			_label(
+				{ for: id },
+				'power',
+			),
+			_input(
+				{ id: id },
+				{ type: 'checkbox' },
+				{ checked: value === 'on' ? true : null },
+				{ change: e => sendMessage( e.target.id, e.target.checked ? 'on' : 'off' ) },
+			),
+		);
+		const range = ( id, name, min, max, value ) => _div(
+			_label(
+				{ for: id },
+				name,
+			),
+			_input(
+				{ id: id },
+				{ type: 'range' },
+				{ min: min },
+				{ max: max },
+				{ value: value },
+				{ change: e => sendMessage( e.target.id, e.target.value ) },
+			),
+		);
+		const percent = ( id, name, value ) => range( id, name, 0,    100,  value );
+		const degrees = ( id, name, value ) => range( id, name, 0,    359,  value );
+		const kelvin  = ( id, name, value ) => range( id, name, 2500, 9000, value );
+
+		const text = ( id, name ) => _div(
+			_label(
+				{ for: id },
+				name,
+			),
+			_input(
+				{ id: id },
+				{ type: 'text' },
+			),
+		);
+
+                function sendMessage( path, data ) {
+			console.log( `sent a message: ${path}: ${data}` );
+                }
+
+		// TEST DATA.
+
+                const m = new Map();
+
+		m.setNested( [ 'living-room', 'speakers', 'power' ],         'on' );
+                m.setNested( [ 'living-room', 'speakers', 'volume_percent' ], 80 );
+
+		function setValue( keys, value ) {
+			const rerender = ! m.hasNested( keys );
+			m.setNested( keys, value );
+			if ( rerender ) {
+				render( m );
+			}
+		}
+
+		render( m );
+
+		document.querySelector( 'main' ).appendChild(
+			_button(
+				'add lights',
+				{ click: e => {
+					m.setNested( [ 'living-room', 'lights', 'power' ], 'on' );
+					render( m );
+				} },
+			)
+		);
+	</script>
+</body>
+</html>
