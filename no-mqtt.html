@@ -31,122 +31,85 @@
                 Array.prototype.last = function() {
                         return this[ this.length - 1 ];
                 }
+                Array.prototype.unique = function() {
+			return this.filter( ( x, i ) => this.indexOf( x ) === i );
+                }
 		Map.prototype.sortedKeys = function() {
 			const keys = Array.from( this.keys() );
 			keys.sort();
 			return keys;
 		}
-                Map.prototype.setNested = function( keys, value ) {
-                        let m = this;
-                        for ( let key of keys.slice( 0, -1 ) ) {
-                                if ( ! m.has( key ) ) {
-                                        m.set( key, new Map() );
-                                }
-
-                                m = m.get( key );
-                                if ( ! m instanceof Map ) {
-                                        throw `${key} exists and is not a map`;
-                                }
-                        }
-
-                        m.set( keys.last(), value );
-                }
-                Map.prototype.getNested = function( keys ) {
-                        let m = this;
-                        for ( let key of keys.slice( 0, -1 ) ) {
-				m = m.get( key );
-                                if ( ! m instanceof Map ) {
-                                        throw `${key} exists and is not a map`;
-                                }
-                        }
-
-                        return m.get( keys.last() );
-                }
-                Map.prototype.hasNested = function( keys ) {
-                        let m = this;
-                        for ( let key of keys.slice( 0, -1 ) ) {
-				if ( ! m.has( key ) ) {
-					return false;
-				}
-
-				m = m.get( key );
-                                if ( ! m instanceof Map ) {
-                                        throw `${key} exists and is not a map`;
-                                }
-                        }
-
-                        return m.has( keys.last() );
-                }
 
                 function render( m ) {
+			const nameForID = id => id.split( '/' ).last().replace( '-', ' ' );
+
+			const rooms    = ( m, home  )  => m.sortedKeys().filter( k => k.startsWith( home   ) ).map( k => k.split( '/' )[ 1 ] ).unique();
+	 		const devices  = ( m, room )   => m.sortedKeys().filter( k => k.startsWith( room   ) ).map( k => k.split( '/' )[ 2 ] ).unique();
+			const controls = ( m, device ) => m.sortedKeys().filter( k => k.startsWith( device ) ).map( k => k.split( '/' )[ 3 ] ).unique();
+
+			const _power = id => _div(
+				_label(
+					{ for: id },
+					'power',
+				),
+				_input(
+					{ id: id },
+					{ type: 'checkbox' },
+					{ checked: m.get( id ) === 'on' ? true : null },
+					{ change: e => sendMessage( e.target.id, e.target.checked ? 'on' : 'off' ) },
+				),
+			);
+			const _range = ( id, min, max ) => _div(
+				_label(
+					{ for: id },
+					nameForID( id ),
+				),
+				_input(
+					{ id: id },
+					{ type: 'range' },
+					{ min: min },
+					{ max: max },
+					{ value: m.get( id ) },
+					{ change: e => sendMessage( e.target.id, e.target.value ) },
+				),
+			);
+			const _percent = id => _range( id, 0,    100  );
+			const _degrees = id => _range( id, 0,    359  );
+			const _kelvin  = id => _range( id, 2500, 9000 );
+			const _text = id => _div(
+				_label(
+					{ for: id },
+					nameForID( id ),
+				),
+				_input(
+					{ id: id },
+					{ type: 'text' },
+					{ value: m.get( id ) },
+				),
+			);
+			const _control = id =>
+				id.endsWith( '_degrees' ) ? _degrees( id ) :
+				id.endsWith( '_kelvin' )  ? _kelvin( id )  :
+				id.endsWith( '_percent' ) ? _percent( id ) :
+				id.endsWith( 'power' )    ? _power( id )   :
+							    text( id )     ;
+
+			const _device = id => _section(
+				{ id: id },
+				_h3( nameForID( id ) ),
+				controls( m, id ).map( control => _control( `${id}/${control}` ) ),
+			);
+			const _room = id => _section(
+				{ id: id },
+				_h2( nameForID( id ) ),
+				devices( m, id ).map( device => _device( `${id}/${device}` ) ),
+			);
 			const main = _main(
-				m.sortedKeys().map( room => _section(
-					{ id: `home/${room}` },
-					_h2( room.replace( '-', ' ' ).toTitleCase() ),
-					m.get( room ).sortedKeys().map( device => _section(
-						{ id: `home/${room}/${device}` },
-						_h3( device.replace( '-', ' ' ).toTitleCase() ),
-						m.getNested( [ room, device ] ).sortedKeys().map(
-							control => controlForType(
-								`home/${room}/${device}/${control}`,
-								control.split( '_' )[ 0 ].replace( '-', ' ' ),
-								m.getNested( [ room, device, control ] ),
-							),
-						),
-					) ),
-				) ),
+				rooms( m, 'home' ).map( room => _room( `home/${room}` ) ),
 			);
 
 			document.querySelector( 'main' ).replaceWith( main );
                 }
-
-		const controlForType = ( id, name, value ) =>
-			id.endsWith( 'power' )    ? power( id, value )         :
-			id.endsWith( '_percent' ) ? percent( id, name, value ) :
-			id.endsWith( '_degrees' ) ? degrees( id, name, value ) :
-			id.endsWith( '_kelvin' )  ? degrees( id, name, value ) :
-			id.endsWith( '_kelvin' )  ? degrees( id, name, value ) :
-			                            text( id, name, value )    ;
-		const power = ( id, value ) => _div(
-			_label(
-				{ for: id },
-				'power',
-			),
-			_input(
-				{ id: id },
-				{ type: 'checkbox' },
-				{ checked: value === 'on' ? true : null },
-				{ change: e => sendMessage( e.target.id, e.target.checked ? 'on' : 'off' ) },
-			),
-		);
-		const range = ( id, name, min, max, value ) => _div(
-			_label(
-				{ for: id },
-				name,
-			),
-			_input(
-				{ id: id },
-				{ type: 'range' },
-				{ min: min },
-				{ max: max },
-				{ value: value },
-				{ change: e => sendMessage( e.target.id, e.target.value ) },
-			),
-		);
-		const percent = ( id, name, value ) => range( id, name, 0,    100,  value );
-		const degrees = ( id, name, value ) => range( id, name, 0,    359,  value );
-		const kelvin  = ( id, name, value ) => range( id, name, 2500, 9000, value );
-
-		const text = ( id, name ) => _div(
-			_label(
-				{ for: id },
-				name,
-			),
-			_input(
-				{ id: id },
-				{ type: 'text' },
-			),
-		);
 
                 function sendMessage( path, data ) {
 			console.log( `sent a message: ${path}: ${data}` );
@@ -156,26 +119,38 @@
 
                 const m = new Map();
 
-		m.setNested( [ 'living-room', 'speakers', 'power' ],         'on' );
-                m.setNested( [ 'living-room', 'speakers', 'volume_percent' ], 80 );
+		m.set( 'home/living-room/speakers/power',          'on' );
+		m.set( 'home/living-room/speakers/volume_percent', '80' );
 
-		function setValue( keys, value ) {
-			const rerender = ! m.hasNested( keys );
-			m.setNested( keys, value );
-			if ( rerender ) {
-				render( m );
+		function setValue( key, value ) {
+			if ( m.has( key ) ) {
+				const control = document.getElementById( key );
+				if ( key.endsWith( '/power' ) ) {
+					control.checked = value === 'on' ? 'true' : null;
+				} else {
+					control.value = value;
+				}
+			} else {
+				const rerender = ! m.has( key );
+				m.set( key, value );
+				if ( rerender ) {
+					render( m );
+				}
 			}
 		}
 
 		render( m );
 
-		document.querySelector( 'main' ).appendChild(
+		document.querySelector( 'body' ).appendChild(
 			_button(
 				'add lights',
-				{ click: e => {
-					m.setNested( [ 'living-room', 'lights', 'power' ], 'on' );
-					render( m );
-				} },
+				{ click: e => setValue( 'home/living-room/lights/power', 'on' ) },
+			)
+		);
+		document.querySelector( 'body' ).appendChild(
+			_button(
+				'off lights',
+				{ click: e => setValue( 'home/living-room/lights/power', 'off' ) },
 			)
 		);
 	</script>
