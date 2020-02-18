@@ -1,7 +1,7 @@
 'use strict';
 
 import { elemRegister } from './elems.js';
-elemRegister( '_', null, 'button', 'div', 'input', 'h2', 'h3', 'label', 'main', 'option', 'p', 'section', 'select', 'span' );
+elemRegister( '_', null, 'button', 'div', 'input', 'h2', 'h3', 'label', 'main', 'option', 'p', 'section', 'select', 'span', 'table', 'td', 'tr' );
 
 Array.prototype.last = function() {
 	return this[ this.length - 1 ];
@@ -76,12 +76,13 @@ export class UI {
 				deviceSection = _section(
 						{ id: `${home}/${zone}/${device}` },
 						_h3( nameForId( device ) ),
+						_table(),
 				);
 				zoneSection.insertSortedById( deviceSection );
 			}
 
 			const controlElement = this.controlForTopic( topic );
-			deviceSection.insertSortedById( controlElement );
+			deviceSection.querySelector( 'table' ).insertSortedById( controlElement );
 		}
 
 		if ( this.updaters.has( topic ) ) {
@@ -152,10 +153,10 @@ export class UI {
 				enumElement.appendChild( _option( value ) );
 			} );
 		};
-		const _power      = ( topic, value ) => { document.getElementById( topic ).checked = value === 'on' ? true : null; };
-		const _range      = ( topic, value ) => { document.getElementById( topic ).value = value; };
-		const _sensor     = ( topic, value ) => { document.getElementById( topic ).textContent = value; };
-		const _text       = ( topic, value ) => { document.getElementById( topic ).value = value; };
+		const _power      = ( topic, value ) => { document.getElementById( topic ).querySelector( 'input' ).checked = value === 'on' ? true : null; };
+		const _range      = ( topic, value ) => { document.getElementById( topic ).querySelector( 'input' ).value = value; };
+		const _sensor     = ( topic, value ) => { document.getElementById( topic ).querySelector( 'span'  ).textContent = value; };
+		const _text       = ( topic, value ) => { document.getElementById( topic ).querySelector( 'input' ).value = value; };
 
 		return topic.includes( 'hygrothermograph' ) ? _sensor :
 		       topic.endsWith( 'degrees' )     ? _range      :
@@ -168,62 +169,55 @@ export class UI {
 	}
 
 	controlForTopic( topic ) {
-		const _power = id => _label(
+		const _power = id => _tr(
 			{ id: id },
-			'power',
-			_input( {
-				id: id,
+			_td( 'power' ),
+			_td( _input( {
 				type: 'checkbox',
 				checked: this.values.get( id ) === 'on' ? true : null,
 				change: e => this.sendMessage(
-					e.target.parentElement.id,
+					id,
 					e.target.checked ? 'on' : 'off',
 				),
-			} ),
+			} ) ),
 		);
 
-		const _range = ( id, min, max ) => _label(
+		const _range = ( id, min, max ) => _tr(
 			{ id: id },
-			nameForId( id ),
-			_input( {
-				id: id,
+			_td( nameForId( id ) ),
+			_td( _input( {
 				type: 'range',
 				min: min,
 				max: max,
 				value: this.values.get( id ),
-				change: e => this.sendMessage( e.target.parentElement.id, e.target.value ),
-			} ),
+				change: e => this.sendMessage( id, e.target.value ),
+			} ) ),
 		);
 		const _percent = id => _range( id, 0,    100  );
 		const _degrees = id => _range( id, 0,    359  );
 		const _kelvin  = id => _range( id, 2500, 9000 );
 
-		const _text = id => _label(
+		const _text = id => _tr(
 			{ id: id },
-			nameForId( id ),
-			_input( {
-				id: id,
+			_td( nameForId( id ) ),
+			_td( _input( {
 				type: 'text',
 				value: this.values.get( id ),
-				change: e => this.sendMessage(
-					e.target.parentElement.id,
-					e.target.value,
-				),
-			} ),
+				change: e => this.sendMessage( id, e.target.value ),
+			} ) ),
 		);
 
-		const _enum = id => _label(
+		const _enum = id => _tr(
 			{ id: id },
-			nameForId( id ),
-			_select(
-				{ id: id },
-				{ change: e => this.sendMessage( e.target.parentElement.id, e.target.value ) },
+			_td( nameForId( id ) ),
+			_td( _select(
+				{ change: e => this.sendMessage( id, e.target.value ) },
 				this.values.getOrDefault( `${id}/values`, this.values.get( id ) )  // always include our current value.
 				           .split( '\n' ).map( value => _option(
 						value,
 						{ selected: value === this.values.get( id ) ? true : null },
 				) ),
-			),
+			) ),
 		);
 
 		const _sensor = id => {
@@ -231,10 +225,13 @@ export class UI {
 				id.endsWith( 'celsius' ) ? '°C' :
 				id.endsWith( 'percent' ) ? '%'  :
 							   ''   ;
-			return _div(
-				`${nameForId( id )}: `,
-				_span( { id: id }, this.values.get( id ) ),
-				unit,
+			return _tr(
+				{ id: id },
+				_td( nameForId( id ) ),
+				_td(
+					_span( this.values.get( id ) ),
+					unit,
+				),
 			);
 		};
 
