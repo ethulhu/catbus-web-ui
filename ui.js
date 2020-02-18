@@ -119,7 +119,7 @@ export class UI {
 
 	updaterForTopic( topic ) {
 		const _enum = ( topic, value ) => {
-			const enumElement = document.getElementById( topic );
+			const enumElement = document.getElementById( topic ).querySelector( 'select' );
 
 			// the enum's value needs to be in the options to be visible,
 			// so add it if it's not there already.
@@ -135,7 +135,7 @@ export class UI {
 		};
 		const _enumValues = ( topic, value ) => {
 			const enumTopic   = topic.slice( 0, - '/values'.length )
-			const enumElement = document.getElementById( enumTopic );
+			const enumElement = document.getElementById( enumTopic ).querySelector( 'select' );
 			if ( ! enumElement ) {
 				return;
 			}
@@ -168,52 +168,56 @@ export class UI {
 	}
 
 	controlForTopic( topic ) {
-		const _power = id => _div(
-			_label( { for: id }, 'power' ),
+		const _power = id => _label(
+			{ id: id },
+			'power',
 			_input( {
 				id: id,
 				type: 'checkbox',
 				checked: this.values.get( id ) === 'on' ? true : null,
 				change: e => this.sendMessage(
-					e.target.id,
+					e.target.parentElement.id,
 					e.target.checked ? 'on' : 'off',
 				),
 			} ),
 		);
 
-		const _range = ( id, min, max ) => _div(
-			_label( { for: id }, nameForId( id ) ),
+		const _range = ( id, min, max ) => _label(
+			{ id: id },
+			nameForId( id ),
 			_input( {
 				id: id,
 				type: 'range',
 				min: min,
 				max: max,
 				value: this.values.get( id ),
-				change: e => sendMessage( e.target.id, e.target.value ),
+				change: e => this.sendMessage( e.target.parentElement.id, e.target.value ),
 			} ),
 		);
 		const _percent = id => _range( id, 0,    100  );
 		const _degrees = id => _range( id, 0,    359  );
 		const _kelvin  = id => _range( id, 2500, 9000 );
 
-		const _text = id => _div(
-			_label( { for: id }, nameForId( id ) ),
+		const _text = id => _label(
+			{ id: id },
+			nameForId( id ),
 			_input( {
 				id: id,
 				type: 'text',
 				value: this.values.get( id ),
-				change: e => sendMessage(
-					e.target.id,
+				change: e => this.sendMessage(
+					e.target.parentElement.id,
 					e.target.value,
 				),
 			} ),
 		);
 
-		const _enum = id => _div(
-			_label( { for: id }, nameForId( id ) ),
+		const _enum = id => _label(
+			{ id: id },
+			nameForId( id ),
 			_select(
 				{ id: id },
-				{ change: e => sendMessage( e.target.id, e.target.value ) },
+				{ change: e => this.sendMessage( e.target.parentElement.id, e.target.value ) },
 				this.values.getOrDefault( `${id}/values`, this.values.get( id ) )  // always include our current value.
 				           .split( '\n' ).map( value => _option(
 						value,

@@ -10,7 +10,7 @@
 			background: #1f1f1f;
 			color: #ddd;
 		}
-		input, button, select {
+		label {
 			display: block;
 		}
 	}
@@ -66,7 +66,7 @@
 		client.onConnectionLost = onConnectionLost;
 		// TODO: also { useSSL: true, userName: …, password: … }.
 		// https://www.eclipse.org/paho/files/jsdoc/
-		client.connect( { onSuccess: onConnect, onFailure: onConnectionFailure, reconnect: true } );
+		client.connect( { onSuccess: onConnect, onFailure: onConnectionFailure } );
 	</script>
 </body>
 </html>
