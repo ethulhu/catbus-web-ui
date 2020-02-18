@@ -10,7 +10,7 @@
 			background: #1f1f1f;
 			color: #ddd;
 		}
-		input, button {
+		input, button, select {
 			display: block;
 		}
 	}
@@ -18,139 +18,39 @@
 </head>
 <body>
 	<h1>edelheim</h1>
-	<main></main>
+	<main id='home'></main>
 	<script type='module'>
+		import { UI } from './ui.js';
 		import { elemRegister } from './elems.js';
+
 	  	elemRegister( '_', null, 'button', 'div', 'input', 'h2', 'h3', 'label', 'main', 'p', 'section' );
-
-                String.prototype.toTitleCase = function() {
-                        return this.split( ' ' )
-                                   .map( word => `${word.charAt( 0 ).toUpperCase()}${word.slice( 1 )}` )
-                                   .join( ' ' );
-                }
-                Array.prototype.last = function() {
-                        return this[ this.length - 1 ];
-                }
-                Array.prototype.unique = function() {
-			return this.filter( ( x, i ) => this.indexOf( x ) === i );
-                }
-		Map.prototype.sortedKeys = function() {
-			const keys = Array.from( this.keys() );
-			keys.sort();
-			return keys;
-		}
-
-                function render( m ) {
-			const nameForID = id => id.split( '/' ).last().replace( '-', ' ' );
-
-			const rooms    = ( m, home  )  => m.sortedKeys().filter( k => k.startsWith( home   ) ).map( k => k.split( '/' )[ 1 ] ).unique();
-	 		const devices  = ( m, room )   => m.sortedKeys().filter( k => k.startsWith( room   ) ).map( k => k.split( '/' )[ 2 ] ).unique();
-			const controls = ( m, device ) => m.sortedKeys().filter( k => k.startsWith( device ) ).map( k => k.split( '/' )[ 3 ] ).unique();
-
-			const _power = id => _div(
-				_label(
-					{ for: id },
-					'power',
-				),
-				_input(
-					{ id: id },
-					{ type: 'checkbox' },
-					{ checked: m.get( id ) === 'on' ? true : null },
-					{ change: e => sendMessage( e.target.id, e.target.checked ? 'on' : 'off' ) },
-				),
-			);
-			const _range = ( id, min, max ) => _div(
-				_label(
-					{ for: id },
-					nameForID( id ),
-				),
-				_input(
-					{ id: id },
-					{ type: 'range' },
-					{ min: min },
-					{ max: max },
-					{ value: m.get( id ) },
-					{ change: e => sendMessage( e.target.id, e.target.value ) },
-				),
-			);
-			const _percent = id => _range( id, 0,    100  );
-			const _degrees = id => _range( id, 0,    359  );
-			const _kelvin  = id => _range( id, 2500, 9000 );
-			const _text = id => _div(
-				_label(
-					{ for: id },
-					nameForID( id ),
-				),
-				_input(
-					{ id: id },
-					{ type: 'text' },
-					{ value: m.get( id ) },
-				),
-			);
-			const _control = id =>
-				id.endsWith( '_degrees' ) ? _degrees( id ) :
-				id.endsWith( '_kelvin' )  ? _kelvin( id )  :
-				id.endsWith( '_percent' ) ? _percent( id ) :
-				id.endsWith( 'power' )    ? _power( id )   :
-							    text( id )     ;
-
-			const _device = id => _section(
-				{ id: id },
-				_h3( nameForID( id ) ),
-				controls( m, id ).map( control => _control( `${id}/${control}` ) ),
-			);
-			const _room = id => _section(
-				{ id: id },
-				_h2( nameForID( id ) ),
-				devices( m, id ).map( device => _device( `${id}/${device}` ) ),
-			);
-			const main = _main(
-				rooms( m, 'home' ).map( room => _room( `home/${room}` ) ),
-			);
-
-			document.querySelector( 'main' ).replaceWith( main );
-                }
 
                 function sendMessage( path, data ) {
 			console.log( `sent a message: ${path}: ${data}` );
                 }
 
+		const ui = new UI( 'home', sendMessage );
+		window.setInterval( () => {
+			ui.render();
+		} , 1000 );
+
 		// TEST DATA.
 
-                const m = new Map();
+		ui.set( 'home/living-room/speakers/power',          'on' );
+		ui.set( 'home/living-room/speakers/volume_percent', '80' );
 
-		m.set( 'home/living-room/speakers/power',          'on' );
-		m.set( 'home/living-room/speakers/volume_percent', '80' );
-
-		function setValue( key, value ) {
-			if ( m.has( key ) ) {
-				const control = document.getElementById( key );
-				if ( key.endsWith( '/power' ) ) {
-					control.checked = value === 'on' ? 'true' : null;
-				} else {
-					control.value = value;
-				}
-			} else {
-				const rerender = ! m.has( key );
-				m.set( key, value );
-				if ( rerender ) {
-					render( m );
-				}
-			}
-		}
-
-		render( m );
+		ui.render();
 
 		document.querySelector( 'body' ).appendChild(
 			_button(
 				'add lights',
-				{ click: e => setValue( 'home/living-room/lights/power', 'on' ) },
+				{ click: e => ui.set( 'home/living-room/lights/power', 'on' ) },
 			)
 		);
 		document.querySelector( 'body' ).appendChild(
 			_button(
 				'off lights',
-				{ click: e => setValue( 'home/living-room/lights/power', 'off' ) },
+				{ click: e => ui.set( 'home/living-room/lights/power', 'off' ) },
 			)
 		);
 	</script>
