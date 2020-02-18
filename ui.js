@@ -136,10 +136,11 @@ export class UI {
 		};
 		const _enumValues = ( topic, value ) => {
 			const enumTopic   = topic.slice( 0, - '/values'.length )
-			const enumElement = document.getElementById( enumTopic ).querySelector( 'select' );
-			if ( ! enumElement ) {
+			const enumParent = document.getElementById( enumTopic )
+			if ( ! enumParent ) {
 				return;
 			}
+			const enumElement = enumParent.querySelector( 'select' );
 
 			// the enum's value needs to be in the options to be visible.
 			// so add it if it's not there already.
