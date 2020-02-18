@@ -29,30 +29,50 @@
 			console.log( `sent a message: ${path}: ${data}` );
                 }
 
-		const ui = new UI( 'home', sendMessage );
-		window.setInterval( () => {
-			ui.render();
-		} , 1000 );
+		const main = document.getElementById( 'home' );
+		const ui = new UI( { rootElement: main, topicPrefix: 'home', sendMessageFunction: sendMessage } );
 
 		// TEST DATA.
 
-		ui.set( 'home/living-room/speakers/power',          'on' );
-		ui.set( 'home/living-room/speakers/volume_percent', '80' );
+		Array.prototype.random = function() {
+			return this[ Math.floor( Math.random() * this.length ) ];
+		}
 
-		ui.render();
+		const rooms = [
+			'bedroom',
+			'kitchen',
+			'living-room',
+		];
+		const devices = [
+			'light',
+			'speakers',
+			'tv',
+		];
+		const controls = [
+			'input_enum',
+			'input_enum/values',
+			'power',
+			'temperature_celsius',
+			'volume_percent',
+		];
+		const controlValues = {
+			'input_enum': [ 'upnp', 'airplay' ],
+			'input_enum/values': [ 'upnp\nairplay', 'tv\nairplay' ],
+			'power': [ 'on', 'off' ],
+			'temperature_celsius': [ 18, 19, 20, 21 ],
+			'volume_percent': [ 11, 30, 42 ],
+		};
 
-		document.querySelector( 'body' ).appendChild(
-			_button(
-				'add lights',
-				{ click: e => ui.set( 'home/living-room/lights/power', 'on' ) },
-			)
-		);
-		document.querySelector( 'body' ).appendChild(
-			_button(
-				'off lights',
-				{ click: e => ui.set( 'home/living-room/lights/power', 'off' ) },
-			)
-		);
+		window.setInterval( () => {
+			const room    = rooms.random();
+			const device  = devices.random();
+			const control = controls.random();
+			const value   = controlValues[ control ].random();
+
+			const topic = `home/${room}/${device}/${control}`
+			ui.set( topic, value );
+			console.log( `${topic}: ${value}` );
+		}, 1000 );
 	</script>
 </body>
 </html>

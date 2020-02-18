@@ -22,9 +22,9 @@
 	<main id='home'></main>
 	<script type='module'>
 		import { UI } from './ui.js';
-		import { elemRegister } from './elems.js';
 
-	  	elemRegister( '_', null, 'button', 'div', 'input', 'h2', 'h3', 'label', 'main', 'option', 'p', 'section', 'select', 'span' );
+		const main = document.getElementById( 'home' );
+		const ui = new UI( { rootElement: main, topicPrefix: 'home', sendMessageFunction: sendMessage } );
 
 		// MQTT.
 
@@ -57,18 +57,9 @@
 			message.destinationName = path;
 			message.qos = AT_LEAST_ONCE;
 			message.retained = true;
-			client.send( message );
-			newData = true;
-		}
 
-		let newData = true;
-		const ui = new UI( 'home', sendMessage );
-		window.setInterval( () => {
-			if ( newData ) {
-				newData = false;
-				ui.render();
-			}
-		} , 1000 );
+			client.send( message );
+		}
 
 		const client = new Paho.MQTT.Client( 'valkyrie.local', 1884, 'web_client' );
 		client.onMessageArrived = onMessageArrived;
