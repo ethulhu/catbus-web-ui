@@ -50,7 +50,11 @@
 			const data = message.payloadString;
 			console.log( `${topic}: ${data}` );
 
-			ui.set( topic, data );
+			try {
+				ui.set( topic, data );
+			} catch ( e ) {
+				console.error( `error when displaying ${topic}=${data}: ${e}` );
+			}
 		}
 		function sendMessage( path, data ) {
 			const message = new Paho.Message( data );
@@ -61,7 +65,7 @@
 			client.send( message );
 		}
 
-		const client = new Paho.Client( 'valkyrie.local', 1884, 'web_client' );
+		const client = new Paho.Client( 'valkyrie.local', 1884, `web-client_${Math.floor(Math.random()*10000)}` );
 		client.onMessageArrived = onMessageArrived;
 		client.onConnectionLost = onConnectionLost;
 		// TODO: also { useSSL: true, userName: …, password: … }.
