@@ -135,24 +135,27 @@ export class UI {
 			enumElement.value = value;
 		};
 		const _enumValues = ( topic, value ) => {
-			const enumTopic   = topic.slice( 0, - '/values'.length )
-			const enumParent = document.getElementById( enumTopic )
-			if ( ! enumParent ) {
-				return;
+			const enumTopic  = topic.slice( 0, - '/values'.length )
+			if ( ! this.values.has( enumTopic ) ) {
+				return
 			}
+			const enumValue   = this.values.get( enumTopic );
+
+			const enumParent  = document.getElementById( enumTopic )
 			const enumElement = enumParent.querySelector( 'select' );
 
 			// the enum's value needs to be in the options to be visible.
 			// so add it if it's not there already.
 			const values = value.split( '\n' );
-			if ( ! values.includes( enumElement.value ) ) {
-				values.push( enumElement.value );
+			if ( ! values.includes( enumValue ) ) {
+				values.push( enumValue );
 			}
 
 			enumElement.innerHTML = '';
 			values.forEach( value => {
 				enumElement.appendChild( _option( value ) );
 			} );
+			enumElement.value = enumValue;
 		};
 		const _power      = ( topic, value ) => { document.getElementById( topic ).querySelector( 'input' ).checked = value === 'on' ? true : null; };
 		const _range      = ( topic, value ) => { document.getElementById( topic ).querySelector( 'input' ).value = value; };
