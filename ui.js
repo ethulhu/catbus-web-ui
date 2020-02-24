@@ -157,7 +157,7 @@ export class UI {
 			} );
 			enumElement.value = enumValue;
 		};
-		const _power      = ( topic, value ) => { document.getElementById( topic ).querySelector( 'input' ).checked = value === 'on' ? true : null; };
+		const _power      = ( topic, value ) => { document.getElementById( topic ).querySelector( 'input' ).checked = value === 'on'; };
 		const _range      = ( topic, value ) => { document.getElementById( topic ).querySelector( 'input' ).value = value; };
 		const _sensor     = ( topic, value ) => { document.getElementById( topic ).querySelector( 'span'  ).textContent = value; };
 		const _text       = ( topic, value ) => { document.getElementById( topic ).querySelector( 'input' ).value = value; };
@@ -178,7 +178,7 @@ export class UI {
 			_td( 'power' ),
 			_td( _input( {
 				type: 'checkbox',
-				checked: this.values.get( id ) === 'on' ? true : null,
+				checked: this.values.get( id ) === 'on',
 				change: e => this.sendMessage(
 					id,
 					e.target.checked ? 'on' : 'off',
@@ -219,7 +219,7 @@ export class UI {
 				this.values.getOrDefault( `${id}/values`, this.values.get( id ) )  // always include our current value.
 				           .split( '\n' ).map( value => _option(
 						value,
-						{ selected: value === this.values.get( id ) ? true : null },
+						{ selected: value === this.values.get( id ) },
 				) ),
 			) ),
 		);
