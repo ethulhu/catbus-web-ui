@@ -68,6 +68,12 @@ export class UI {
 				zoneSection = _section(
 					{ id: `${home}/${zone}` },
 					_h2( nameForId( zone ) ),
+					_button(
+						'everything off',
+						{ click: e => Array.from( this.values.keys() )
+						                   .filter( k => new RegExp( `^${home}/${zone}/[^/]+/power$` ).test( k ) )
+						                   .map( k => this.sendMessage( k, 'off' ) ) },
+					),
 				);
 				this.rootElement.insertSortedById( zoneSection );
 			}
