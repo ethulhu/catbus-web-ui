@@ -65,12 +65,24 @@
 			client.send( message );
 		}
 
-		const client = new Paho.Client( 'valkyrie.local', 1884, `web-client_${Math.floor(Math.random()*10000)}` );
+		const defaultPort =
+			protocol => protocol === 'https:' ? 443 : 80;
+
+		const client = new Paho.Client(
+			location.hostname,
+			location.port || defaultPort( location.protocol ),
+			`web-client_${Math.floor(Math.random()*10000)}`,
+		);
 		client.onMessageArrived = onMessageArrived;
 		client.onConnectionLost = onConnectionLost;
 		// TODO: also { useSSL: true, userName: …, password: … }.
 		// https://www.eclipse.org/paho/files/jsdoc/
-		client.connect( { onSuccess: onConnect, onFailure: onConnectionFailure, reconnect: true } );
+		client.connect( {
+			onSuccess: onConnect,
+			onFailure: onConnectionFailure,
+			reconnect: true,
+			useSSL:    true,
+		} );
 	</script>
 </body>
 </html>
