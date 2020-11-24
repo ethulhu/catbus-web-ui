@@ -1,0 +1,16 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Catbus Web UI
+Upstream-Contact: Ethel Morgan <eth@ethulhu.co.uk>
+Source: https://ethulhu.co.uk/catbus
+
+Files: go.sum .pre-commit-config.yaml
+Copyright: n/a
+License: CC0-1.0
+
+Files: cmd/catbus-web-ui/statik/statik.go
+Copyright: Ethel Morgan
+License: MIT
+
+Files: cmd/catbus-web-ui/static/paho*.js
+Copyright: IBM Corp.
+License: EPL-1.0
