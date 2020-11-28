@@ -25,17 +25,19 @@ type (
 
 	Control interface {
 		Name() string
-		Set(value string) error
+		Topic() string
 	}
 
 	Enum struct {
 		name   string
+		topic  string
 		Value  string
 		Values []string
 	}
 
 	Range struct {
 		name  string
+		topic string
 		Value int
 		Min   int
 		Max   int
@@ -43,6 +45,7 @@ type (
 
 	Toggle struct {
 		name  string
+		topic string
 		Value bool
 	}
 )
@@ -68,11 +71,11 @@ func OfValuesByTopic(valuesByTopic map[string]string) Home {
 		controlsByName[control] = c
 	}
 
-	for k, v := range valuesByTopic {
+	for topic, v := range valuesByTopic {
 		if v == "" {
 			continue
 		}
-		parts := strings.Split(k, "/")
+		parts := strings.Split(topic, "/")
 		if len(parts) != 4 {
 			continue
 		}
@@ -86,6 +89,7 @@ func OfValuesByTopic(valuesByTopic map[string]string) Home {
 			}
 			insertControl(zone, device, control, &Toggle{
 				name:  "power",
+				topic: topic,
 				Value: on,
 			})
 		case strings.HasSuffix(control, "_percent"):
@@ -95,9 +99,10 @@ func OfValuesByTopic(valuesByTopic map[string]string) Home {
 			}
 			insertControl(zone, device, control, &Range{
 				name:  strings.TrimSuffix(control, "_percent"),
+				topic: topic,
 				Value: value,
 				Min:   0,
-				Max:   2500,
+				Max:   100,
 			})
 		case strings.HasSuffix(control, "_degrees"):
 			value, err := strconv.Atoi(v)
@@ -106,6 +111,7 @@ func OfValuesByTopic(valuesByTopic map[string]string) Home {
 			}
 			insertControl(zone, device, control, &Range{
 				name:  strings.TrimSuffix(control, "_degrees"),
+				topic: topic,
 				Value: value,
 				Min:   0,
 				Max:   360,
@@ -118,17 +124,19 @@ func OfValuesByTopic(valuesByTopic map[string]string) Home {
 			}
 			insertControl(zone, device, control, &Range{
 				name:  control,
+				topic: topic,
 				Value: value,
 				Min:   2500,
 				Max:   9000,
 			})
 		case strings.HasSuffix(control, "_enum"):
 			var values []string
-			if vs, ok := valuesByTopic[k+"/values"]; ok {
+			if vs, ok := valuesByTopic[topic+"/values"]; ok {
 				values = strings.Split(vs, "\n")
 			}
 			insertControl(zone, device, control, &Enum{
 				name:   strings.TrimSuffix(control, "_enum"),
+				topic:  topic,
 				Value:  v,
 				Values: values,
 			})
@@ -183,18 +191,18 @@ func (d Device) Controls() []Control {
 func (e *Enum) Name() string {
 	return e.name
 }
-func (e *Enum) Set(value string) error {
-	panic("not implemented")
+func (e *Enum) Topic() string {
+	return e.topic
 }
 func (r *Range) Name() string {
 	return r.name
 }
-func (r *Range) Set(value string) error {
-	panic("not implemented")
+func (r *Range) Topic() string {
+	return r.topic
 }
 func (t *Toggle) Name() string {
 	return t.name
 }
-func (t *Toggle) Set(value string) error {
-	panic("not implemented")
+func (t *Toggle) Topic() string {
+	return t.topic
 }

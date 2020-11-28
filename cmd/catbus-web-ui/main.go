@@ -142,7 +142,7 @@ func main() {
 			w.Write(bytes)
 		})
 
-	m.PathPrefix("/home/").
+	m.Path("/").
 		Methods("GET").
 		HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			payloadByTopicMu.RLock()

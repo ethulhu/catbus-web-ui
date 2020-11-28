@@ -93,14 +93,14 @@ export async function diffAndImportTree( currentElem, importedElem, digest )
 	// The index of the current element in the import list.
 	let importedIndex;
 
-	console.log( currentElem.outerHTML, importedElem.outerHTML, importedHashes );
+	console.debug( currentElem.outerHTML, importedElem.outerHTML, importedHashes );
 
 	while ( childIndex < currentElem.childElementCount )
 	{
 		currentNode   = currentElem.children[ childIndex ];
 		importedIndex = importedHashes.indexOf( await digest( currentNode ) );
 
-		console.log(
+		console.debug(
 			'On ', childIndex, currentNode, ' with import ref ', importedIndex,
 			'.\n', lastImportedItem, ' of ', importedElem.childElementCount, ' imported'
 		);
@@ -110,11 +110,11 @@ export async function diffAndImportTree( currentElem, importedElem, digest )
 		if ( importedIndex < lastImportedItem )
 		{
 			const deleteEvent = new CustomEvent( 'turbo:delete' );
-			console.log( 'Requesting to delete', currentNode );
+			console.debug( 'Requesting to delete', currentNode );
 
 			if ( currentNode.dispatchEvent( deleteEvent ) )
 			{
-				console.log( 'Deleted', currentNode );
+				console.debug( 'Deleted', currentNode );
 				// We're OK to delete this item.
 				currentElem.removeChild( currentNode );
 
@@ -123,7 +123,7 @@ export async function diffAndImportTree( currentElem, importedElem, digest )
 				continue;
 			}
 
-			console.log( 'Delete was cancelled' );
+			console.debug( 'Delete was cancelled' );
 
 			// Otherwise, we should not delete. We will leave this element
 			// alone, and move on to the next one.
@@ -139,7 +139,7 @@ export async function diffAndImportTree( currentElem, importedElem, digest )
 		if ( importedIndex > lastImportedItem )
 		{
 			let n = [...importedElem.children].slice( lastImportedItem, importedIndex );
-			console.log( 'Adding elements ', lastImportedItem, importedIndex, n );
+			console.debug( 'Adding elements ', lastImportedItem, importedIndex, n );
 				n.forEach( e => currentElem.insertBefore( e.cloneNode( true ), currentNode ) );
 		}
 
@@ -147,17 +147,17 @@ export async function diffAndImportTree( currentElem, importedElem, digest )
 		childIndex += importedIndex - lastImportedItem + 1;
 		lastImportedItem = importedIndex + 1;
 
-		console.log( 'Keeping element', currentNode, '\ncurrent index', childIndex, ', import index', lastImportedItem );
+		console.debug( 'Keeping element', currentNode, '\ncurrent index', childIndex, ', import index', lastImportedItem );
 	}
 
-	console.log( 'Done with the diff phase' );
+	console.debug( 'Done with the diff phase' );
 
 	// Append any left over nodes.
 	if ( lastImportedItem < importedHashes.length - 1 )
 	{
 		// TODO: Do this with less reallocation and also use a document fragment.
 		let n = [...importedElem.children].slice( lastImportedItem );
-		console.log( 'Adding remaining elements ', lastImportedItem, n );
+		console.debug( 'Adding remaining elements ', lastImportedItem, n );
 			n.forEach( e => currentElem.appendChild( e ) );
 	}
 }
