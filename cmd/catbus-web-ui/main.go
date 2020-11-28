@@ -8,15 +8,20 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"strings"
+	"sync"
 
 	"github.com/gorilla/mux"
 	"github.com/rakyll/statik/fs"
+	"go.eth.moe/catbus"
+	"go.eth.moe/catbus-web-ui/config"
 
 	_ "go.eth.moe/catbus-web-ui/cmd/catbus-web-ui/statik"
 )
@@ -24,16 +29,25 @@ import (
 var (
 	port   = flag.Uint("port", 0, "port to listen on")
 	socket = flag.String("socket", "", "path to socket to listen to")
+
+	configPath = flag.String("config-path", "", "path to config.json")
 )
 
 func main() {
 	flag.Parse()
 
+	if *configPath == "" {
+		log.Fatal("must set -config-path")
+	}
+	config, err := config.ParseFile(*configPath)
+	if err != nil {
+		log.Fatalf("could not read config %q: %v", *configPath, err)
+	}
+
 	if (*port == 0) == (*socket == "") {
 		log.Fatal("must set -socket XOR -port")
 	}
 	var conn net.Listener
-	var err error
 	if *port != 0 {
 		conn, err = net.Listen("tcp", fmt.Sprintf(":%v", *port))
 	} else {
@@ -46,6 +60,31 @@ func main() {
 	}
 	defer conn.Close()
 
+	payloadByTopic := map[string]string{}
+	payloadByTopicMu := sync.RWMutex{}
+	broker := catbus.NewClient(config.BrokerURI, catbus.ClientOptions{
+		ConnectHandler: func(broker catbus.Client) {
+			log.Printf("connected to broker %q", config.BrokerURI)
+			broker.Subscribe("home/#", func(_ catbus.Client, m catbus.Message) {
+				payloadByTopicMu.Lock()
+				defer payloadByTopicMu.Unlock()
+
+				payloadByTopic[m.Topic] = m.Payload
+				if m.Payload == "" {
+					delete(payloadByTopic, m.Topic)
+				}
+			})
+		},
+		DisconnectHandler: func(_ catbus.Client, err error) {
+			log.Printf("connected to broker %q: %v", config.BrokerURI, err)
+		},
+	})
+	go func() {
+		if err := broker.Connect(); err != nil {
+			log.Fatalf("could not connect to broker %q: %v", config.BrokerURI, err)
+		}
+	}()
+
 	m := mux.NewRouter()
 	m.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		msg := fmt.Sprintf("not found: %v %v %v", r.Method, r.URL, r.Form)
@@ -54,6 +93,33 @@ func main() {
 		}
 		http.Error(w, msg, http.StatusNotFound)
 	})
+
+	// Return the tree of zones/devices/controls under home/{path} as JSON.
+	// For example,
+	// 	GET /home/ => the entire home.
+	// 	GET /home/bedroom => everything under home/bedroom.
+	m.PathPrefix("/home/").
+		Methods("GET").
+		Headers("Accept", "application/json").
+		HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			payloadByTopicMu.RLock()
+			defer payloadByTopicMu.RUnlock()
+
+			path := strings.TrimPrefix(r.URL.Path, "/")
+
+			rsp := map[string]string{}
+			for k, v := range payloadByTopic {
+				if strings.HasPrefix(k, path) {
+					rsp[k] = v
+				}
+			}
+
+			bytes, err := json.Marshal(rsp)
+			if err != nil {
+				panic(err)
+			}
+			w.Write(bytes)
+		})
 
 	statikFS, err := fs.New()
 	if err != nil {
