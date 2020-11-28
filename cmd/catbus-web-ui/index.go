@@ -44,8 +44,8 @@ var (
             color: #ddd;
         }
     }
-    label {
-        display: block;
+    tr.device > td {
+        padding-bottom: 1em;
     }
   </style>
 </head>
@@ -54,19 +54,23 @@ var (
   {{ range .Zones }}
   <section>
     <h2>{{ title .Name }}</h2>
+    <table>
     {{ range .Devices }}
-      <section>
-        <h3>{{ title .Name }}</h3>
-	<table>
-	{{ range .Controls }}
-	  <tr>
-	    <td>{{ .Name }}</td>
-	    <td>{{ controlTmpl . }}</td>
-	  </tr>
-	{{ end }}
-	</table>
-      </section>
+      <tr class='device'>
+        <td>{{ title .Name }}</td>
+        <td>
+          <table>
+          {{ range .Controls }}
+            <tr>
+              <td>{{ .Name }}</td>
+              <td>{{ controlTmpl . }}</td>
+            </tr>
+          {{ end }}
+          </table>
+        </td>
+      </tr>
     {{ end }}
+    </table>
   </section>
   {{ end }}
 
