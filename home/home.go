@@ -5,6 +5,7 @@
 package home
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -145,6 +146,9 @@ func (h Home) Zones() []Zone {
 	for _, zone := range h.zonesByName {
 		zones = append(zones, zone)
 	}
+	sort.Slice(zones, func(i, j int) bool {
+		return zones[i].name < zones[j].name
+	})
 	return zones
 }
 
@@ -156,6 +160,9 @@ func (z Zone) Devices() []Device {
 	for _, device := range z.devicesByName {
 		devices = append(devices, device)
 	}
+	sort.Slice(devices, func(i, j int) bool {
+		return devices[i].name < devices[j].name
+	})
 	return devices
 }
 
@@ -167,6 +174,9 @@ func (d Device) Controls() []Control {
 	for _, control := range d.controlsByName {
 		controls = append(controls, control)
 	}
+	sort.Slice(controls, func(i, j int) bool {
+		return controls[i].Name() < controls[j].Name()
+	})
 	return controls
 }
 

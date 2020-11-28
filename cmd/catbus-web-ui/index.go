@@ -44,6 +44,15 @@ var (
     {{ end }}
   </section>
   {{ end }}
+
+  <script type='module'>
+    import { addDefaultHooks, loadPage } from '/turbolinks.js';
+    addDefaultHooks();
+    setInterval( () => {
+        console.log( 'refreshing page' );
+        loadPage( document.location ).then( () => { console.log( 'refreshed page' ); } );
+    }, 1000 );
+  </script>
 </body>
 </html>`))
 
