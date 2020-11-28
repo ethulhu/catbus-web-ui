@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"os"
 	"sort"
-	"strings"
 	"sync"
 
 	"github.com/gorilla/mux"
@@ -100,20 +99,41 @@ func main() {
 	// For example,
 	// 	GET /home/ => the entire home.
 	// 	GET /home/bedroom => everything under home/bedroom.
-	m.PathPrefix("/home/").
+	// TODO: maybe actually do the prefix thing?
+	m.Path("/home/").
 		Methods("GET").
 		Headers("Accept", "application/json").
 		HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			payloadByTopicMu.RLock()
 			defer payloadByTopicMu.RUnlock()
 
-			path := strings.TrimPrefix(r.URL.Path, "/")
+			h := home.OfValuesByTopic(payloadByTopic)
 
-			rsp := map[string]string{}
-			for k, v := range payloadByTopic {
-				if strings.HasPrefix(k, path) {
-					rsp[k] = v
+			rsp := map[string]interface{}{}
+			for _, zone := range h.Zones() {
+				rspZone := map[string]interface{}{}
+				for _, device := range zone.Devices() {
+					rspDevice := map[string]interface{}{}
+					for _, control := range device.Controls() {
+						rspControl := map[string]interface{}{}
+						switch control := control.(type) {
+						case *home.Enum:
+							rspControl["value"] = control.Value
+							rspControl["values"] = control.Values
+						case *home.Range:
+							rspControl["value"] = control.Value
+							rspControl["min"] = control.Min
+							rspControl["max"] = control.Max
+						case *home.Toggle:
+							rspControl["value"] = control.Value
+						default:
+							panic("unknown control type")
+						}
+						rspDevice[control.Name()] = rspControl
+					}
+					rspZone[device.Name()] = rspDevice
 				}
+				rsp[zone.Name()] = rspZone
 			}
 
 			bytes, err := json.Marshal(rsp)
@@ -135,30 +155,32 @@ func main() {
 			h := home.OfValuesByTopic(payloadByTopic)
 
 			zones := h.Zones()
-			sort.Strings(zones)
+			sort.Slice(zones, func(i, j int) bool {
+				return zones[i].Name() < zones[j].Name()
+			})
 
 			for _, zone := range zones {
-				fmt.Fprintf(w, "zone: %s\n", zone)
-				devices := h.Devices(zone)
-				sort.Strings(devices)
+				fmt.Fprintf(w, "zone: %s\n", zone.Name())
+				devices := zone.Devices()
+				sort.Slice(devices, func(i, j int) bool {
+					return devices[i].Name() < devices[j].Name()
+				})
 
 				for _, device := range devices {
-					fmt.Fprintf(w, "device: %s\n", device)
-					controls := h.Controls(zone, device)
-					sort.Strings(controls)
+					fmt.Fprintf(w, "device: %s\n", device.Name())
+					controls := device.Controls()
+					sort.Slice(controls, func(i, j int) bool {
+						return controls[i].Name() < controls[j].Name()
+					})
 
 					for _, control := range controls {
-						c, ok := h.Control(zone, device, control)
-						if !ok {
-							panic("wat")
-						}
-						switch c.(type) {
+						switch control.(type) {
 						case *home.Enum:
-							fmt.Fprintf(w, "control: %s (enum)\n", control)
+							fmt.Fprintf(w, "control: %s (enum)\n", control.Name())
 						case *home.Range:
-							fmt.Fprintf(w, "control: %s (range)\n", control)
+							fmt.Fprintf(w, "control: %s (range)\n", control.Name())
 						case *home.Toggle:
-							fmt.Fprintf(w, "control: %s (toggle)\n", control)
+							fmt.Fprintf(w, "control: %s (toggle)\n", control.Name())
 						default:
 							panic("unknown control type")
 						}
