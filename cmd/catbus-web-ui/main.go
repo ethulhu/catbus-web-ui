@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/rakyll/statik/fs"
 	"go.eth.moe/catbus"
 	"go.eth.moe/catbus-web-ui/config"
+	"go.eth.moe/catbus-web-ui/home"
 
 	_ "go.eth.moe/catbus-web-ui/cmd/catbus-web-ui/statik"
 )
@@ -119,6 +121,51 @@ func main() {
 				panic(err)
 			}
 			w.Write(bytes)
+		})
+
+	// Return the tree of zones/devices/controls under home/{path} as JSON.
+	// For example,
+	// 	GET /home/ => the entire home.
+	// 	GET /home/bedroom => everything under home/bedroom.
+	m.PathPrefix("/home/").
+		Methods("GET").
+		HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			payloadByTopicMu.RLock()
+			defer payloadByTopicMu.RUnlock()
+			h := home.OfValuesByTopic(payloadByTopic)
+
+			zones := h.Zones()
+			sort.Strings(zones)
+
+			for _, zone := range zones {
+				fmt.Fprintf(w, "zone: %s\n", zone)
+				devices := h.Devices(zone)
+				sort.Strings(devices)
+
+				for _, device := range devices {
+					fmt.Fprintf(w, "device: %s\n", device)
+					controls := h.Controls(zone, device)
+					sort.Strings(controls)
+
+					for _, control := range controls {
+						c, ok := h.Control(zone, device, control)
+						if !ok {
+							panic("wat")
+						}
+						switch c.(type) {
+						case *home.Enum:
+							fmt.Fprintf(w, "control: %s (enum)\n", control)
+						case *home.Range:
+							fmt.Fprintf(w, "control: %s (range)\n", control)
+						case *home.Toggle:
+							fmt.Fprintf(w, "control: %s (toggle)\n", control)
+						default:
+							panic("unknown control type")
+						}
+					}
+				}
+				fmt.Fprintf(w, "\n")
+			}
 		})
 
 	statikFS, err := fs.New()
