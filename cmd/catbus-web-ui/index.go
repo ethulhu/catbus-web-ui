@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"html/template"
 	"log"
+	"strings"
 
 	"go.eth.moe/catbus-web-ui/home"
 )
@@ -15,6 +16,9 @@ import (
 var (
 	funcs = map[string]interface{}{
 		"controlTmpl": controlTmpl,
+		"title": func(s string) string {
+			return strings.Title(strings.Replace(s, "-", " ", -1))
+		},
 	}
 
 	indexTmpl = template.Must(template.New("index.html").
@@ -49,10 +53,10 @@ var (
   <h1>Home</h1>
   {{ range .Zones }}
   <section>
-    <h2>{{ .Name }}</h2>
+    <h2>{{ title .Name }}</h2>
     {{ range .Devices }}
       <section>
-        <h3>{{ .Name }}</h3>
+        <h3>{{ title .Name }}</h3>
 	<table>
 	{{ range .Controls }}
 	  <tr>
