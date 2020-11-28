@@ -7,11 +7,8 @@ module go.eth.moe/catbus-web-ui
 go 1.15
 
 require (
-	github.com/brutella/hc v1.2.3
-	github.com/eclipse/paho.mqtt.golang v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/rakyll/statik v0.1.7
 	go.eth.moe/catbus v0.0.6
-	go.eth.moe/flag v0.0.2
-	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
+	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b // indirect
 )
