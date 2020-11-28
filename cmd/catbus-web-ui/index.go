@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2020 Ethel Morgan
+//
+// SPDX-License-Identifier: MIT
+
 package main
 
 import (
@@ -15,7 +19,7 @@ var (
 
 	indexTmpl = template.Must(template.New("index.html").
 			Funcs(funcs).
-			Parse(`<DOCTYPE html>
+			Parse(`<!DOCTYPE html>
 <html lang='en'>
 <head>
   <title>Home</title>

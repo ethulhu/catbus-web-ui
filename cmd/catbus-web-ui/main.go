@@ -154,6 +154,23 @@ func main() {
 			}
 		})
 
+	m.Path("/home/{zone}/{device}/{control}").
+		Methods("POST").
+		HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			topic := r.URL.Path[1:]
+			value := r.FormValue("value")
+			if value == "" {
+				return
+			}
+
+			payloadByTopicMu.RLock()
+			defer payloadByTopicMu.RUnlock()
+
+			if _, ok := payloadByTopic[topic]; ok {
+				go broker.Publish(topic, catbus.Retain, value)
+			}
+		})
+
 	statikFS, err := fs.New()
 	if err != nil {
 		panic(err)
