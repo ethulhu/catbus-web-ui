@@ -16,3 +16,10 @@ repos:
         language: system
         entry: nixfmt
         files: \.nix$
+
+    -   id: go-test
+        name: Go Test
+        language: system
+        entry: go test ./...
+        files: \.go$
+        pass_filenames: false
