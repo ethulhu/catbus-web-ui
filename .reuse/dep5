@@ -10,7 +10,3 @@ License: CC0-1.0
 Files: cmd/catbus-web-ui/statik/statik.go
 Copyright: Ethel Morgan
 License: MIT
-
-Files: cmd/catbus-web-ui/static/paho*.js
-Copyright: IBM Corp.
-License: EPL-1.0
