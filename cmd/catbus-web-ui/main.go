@@ -163,10 +163,11 @@ func main() {
 				return
 			}
 
-			payloadByTopicMu.RLock()
-			defer payloadByTopicMu.RUnlock()
+			payloadByTopicMu.Lock()
+			defer payloadByTopicMu.Unlock()
 
 			if _, ok := payloadByTopic[topic]; ok {
+				payloadByTopic[topic] = value // TODO: Can this de-sync from the broker?
 				go broker.Publish(topic, catbus.Retain, value)
 			}
 		})
