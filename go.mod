@@ -10,5 +10,5 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/rakyll/statik v0.1.7
 	go.eth.moe/catbus v0.0.6
-	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b // indirect
+	golang.org/x/net v0.7.0 // indirect
 )
